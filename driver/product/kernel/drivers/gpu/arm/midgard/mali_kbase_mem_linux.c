@@ -1497,6 +1497,7 @@ static int kbase_cpu_vm_fault(struct vm_fault *vmf)
 	struct kbase_cpu_mapping *map = vma->vm_private_data;
 	pgoff_t rel_pgoff;
 	size_t i;
+	int ret = VM_FAULT_SIGBUS;
 	pgoff_t addr;
 
 	KBASE_DEBUG_ASSERT(map);
@@ -1522,9 +1523,9 @@ static int kbase_cpu_vm_fault(struct vm_fault *vmf)
 	addr = (pgoff_t)(vmf->address >> PAGE_SHIFT);
 #endif
 	while (i < map->alloc->nents && (addr < vma->vm_end >> PAGE_SHIFT)) {
-		int ret = vm_insert_pfn(vma, addr << PAGE_SHIFT,
+		ret = vmf_insert_pfn(vma, addr << PAGE_SHIFT,
 		    PFN_DOWN(as_phys_addr_t(map->alloc->pages[i])));
-		if (ret < 0 && ret != -EBUSY)
+		if (unlikely(ret & VM_FAULT_ERROR))
 			goto locked_bad_fault;
 
 		i++; addr++;
@@ -1536,7 +1537,7 @@ static int kbase_cpu_vm_fault(struct vm_fault *vmf)
 
 locked_bad_fault:
 	kbase_gpu_vm_unlock(map->kctx);
-	return VM_FAULT_SIGBUS;
+	return ret;
 }
 
 const struct vm_operations_struct kbase_vm_ops = {
@@ -1605,10 +1606,11 @@ static int kbase_cpu_mmap(struct kbase_va_region *reg, struct vm_area_struct *vm
 			phys_addr_t phys;
 
 			phys = as_phys_addr_t(page_array[i + start_off]);
-			err = vm_insert_pfn(vma, addr, PFN_DOWN(phys));
-			if (WARN_ON(err))
+			err = vmf_insert_pfn(vma, addr, PFN_DOWN(phys));
+			if (unlikely(WARN_ON(err & VM_FAULT_ERROR)))
 				break;
 
+			err = 0;
 			addr += PAGE_SIZE;
 		}
 	} else {
