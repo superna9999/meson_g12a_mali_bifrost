@@ -19,6 +19,7 @@
 #
 #
 
+include $(PANFROST_CFG_DIR)/config.mk
 
 KDIR ?= /lib/modules/$(shell uname -r)/build
 
@@ -36,7 +37,7 @@ endif
 
 # we get the symbols from modules using KBUILD_EXTRA_SYMBOLS to prevent warnings about unknown functions
 all:
-	$(MAKE) -C $(KDIR) M=$(CURDIR) EXTRA_CFLAGS="-I$(CURDIR)/../../../../include -I$(CURDIR)/../../../../tests/include $(SCONS_CFLAGS)" $(SCONS_CONFIGS) KBUILD_EXTRA_SYMBOLS="$(EXTRA_SYMBOLS)" modules
+	$(MAKE) -C $(KDIR) M=$(CURDIR) EXTRA_CFLAGS="-I$(CURDIR)/../../../../include -I$(CURDIR)/../../../../tests/include $(SCONS_CFLAGS) -include $(PANFROST_CFG_DIR)/config.h -include $(PANFROST_INC_DIR)/upstream-workarounds.h" $(SCONS_CONFIGS) KBUILD_EXTRA_SYMBOLS="$(EXTRA_SYMBOLS)" modules
 
 clean:
 	$(MAKE) -C $(KDIR) M=$(CURDIR) clean
