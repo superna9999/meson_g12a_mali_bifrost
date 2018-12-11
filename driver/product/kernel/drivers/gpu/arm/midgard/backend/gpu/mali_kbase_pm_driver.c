@@ -512,7 +512,7 @@ static bool kbase_pm_transition_core_type(struct kbase_device *kbdev,
 
 	/* Perform transitions if any */
 	kbase_pm_invoke(kbdev, type, powerup, ACTION_PWRON);
-#if !PLATFORM_POWER_DOWN_ONLY
+#ifndef CONFIG_MALI_PLATFORM_POWER_DOWN_ONLY
 	kbase_pm_invoke(kbdev, type, powerdown, ACTION_PWROFF);
 #endif
 

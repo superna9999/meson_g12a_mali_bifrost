@@ -198,7 +198,7 @@ static void kbase_pm_gpu_poweroff_wait_wq(struct work_struct *data)
 	struct kbasep_js_device_data *js_devdata = &kbdev->js_data;
 	unsigned long flags;
 
-#if !PLATFORM_POWER_DOWN_ONLY
+#ifndef CONFIG_MALI_PLATFORM_POWER_DOWN_ONLY
 	/* Wait for power transitions to complete. We do this with no locks held
 	 * so that we don't deadlock with any pending workqueues */
 	KBASE_TIMELINE_PM_CHECKTRANS(kbdev,
@@ -211,7 +211,7 @@ static void kbase_pm_gpu_poweroff_wait_wq(struct work_struct *data)
 	mutex_lock(&js_devdata->runpool_mutex);
 	mutex_lock(&kbdev->pm.lock);
 
-#if PLATFORM_POWER_DOWN_ONLY
+#ifdef CONFIG_MALI_PLATFORM_POWER_DOWN_ONLY
 	if (kbdev->pm.backend.gpu_powered) {
 		if (kbase_pm_get_ready_cores(kbdev, KBASE_PM_CORE_L2)) {
 			/* If L2 cache is powered then we must flush it before
@@ -223,7 +223,7 @@ static void kbase_pm_gpu_poweroff_wait_wq(struct work_struct *data)
 #endif /* PLATFORM_POWER_DOWN_ONLY */
 
 	if (!backend->poweron_required) {
-#if !PLATFORM_POWER_DOWN_ONLY
+#ifndef CONFIG_MALI_PLATFORM_POWER_DOWN_ONLY
 		unsigned long flags;
 
 		spin_lock_irqsave(&kbdev->hwaccess_lock, flags);
