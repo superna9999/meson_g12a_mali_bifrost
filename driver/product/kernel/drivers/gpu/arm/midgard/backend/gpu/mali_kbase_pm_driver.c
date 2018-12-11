@@ -1369,13 +1369,22 @@ void kbase_pm_cache_snoop_disable(struct kbase_device *kbdev)
 static int kbase_pm_do_reset(struct kbase_device *kbdev)
 {
 	struct kbasep_reset_timeout_data rtdata;
+	struct kbase_pm_callback_conf *callbacks;
+	int ret;
+
+	callbacks = (struct kbase_pm_callback_conf *)POWER_MANAGEMENT_CALLBACKS;
 
 	KBASE_TRACE_ADD(kbdev, CORE_GPU_SOFT_RESET, NULL, NULL, 0u, 0);
 
 	KBASE_TLSTREAM_JD_GPU_SOFT_RESET(kbdev);
 
-	kbase_reg_write(kbdev, GPU_CONTROL_REG(GPU_COMMAND),
-						GPU_COMMAND_SOFT_RESET, NULL);
+	if (callbacks->soft_reset_callback) {
+		ret = callbacks->soft_reset_callback(kbdev);
+		if (ret)
+			return ret;
+	} else
+		kbase_reg_write(kbdev, GPU_CONTROL_REG(GPU_COMMAND),
+				GPU_COMMAND_SOFT_RESET, NULL);
 
 	/* Unmask the reset complete interrupt only */
 	kbase_reg_write(kbdev, GPU_CONTROL_REG(GPU_IRQ_MASK), RESET_COMPLETED,
