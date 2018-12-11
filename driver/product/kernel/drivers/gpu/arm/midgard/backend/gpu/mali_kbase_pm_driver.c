@@ -57,7 +57,11 @@ MODULE_PARM_DESC(corestack_driver_control,
 		"to the Mali GPU is known to be problematic.");
 KBASE_EXPORT_TEST_API(corestack_driver_control);
 
-bool platform_power_down_only = PLATFORM_POWER_DOWN_ONLY;
+#ifdef CONFIG_MALI_PLATFORM_POWER_DOWN_ONLY
+bool platform_power_down_only = true;
+#else
+bool platform_power_down_only = false;
+#endif
 module_param(platform_power_down_only, bool, 0000);
 MODULE_PARM_DESC(platform_power_down_only,
 		"Disable power down of individual cores.");
