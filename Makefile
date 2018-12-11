@@ -25,6 +25,8 @@
 #
 export
 
+CONFIG_NAME ?= config
+CONFIG_FILE = $(CURDIR)/$(CONFIG_NAME)
 PANFROST_INC_DIR = $(CURDIR)/panfrost-include
 PANFROST_CFG_DIR = $(CURDIR)/panfrost-autogen
 MALI_KBASE_SRC_DIR = $(CURDIR)/driver/product/kernel/drivers/gpu/arm/midgard
@@ -39,8 +41,8 @@ clean:
 $(PANFROST_CFG_DIR):
 	mkdir -p $@
 
-$(PANFROST_CFG_DIR)/config.h: $(CURDIR)/config $(PANFROST_CFG_DIR)
+$(PANFROST_CFG_DIR)/config.h: $(CONFIG_FILE) $(PANFROST_CFG_DIR)
 	sed -e 's/^\(MALI_[^=]\+\)=\(.*\)/#define CONFIG_\1 "\2"/g' $< > $@
 
-$(PANFROST_CFG_DIR)/config.mk: $(CURDIR)/config $(PANFROST_CFG_DIR)
+$(PANFROST_CFG_DIR)/config.mk: $(CONFIG_FILE) $(PANFROST_CFG_DIR)
 	sed -e 's/^\(MALI_[^=]\+\)=\(.*\)/export CONFIG_\1 = \2/g' $< > $@
