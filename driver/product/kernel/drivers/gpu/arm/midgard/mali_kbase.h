@@ -635,5 +635,5 @@ int kbase_io_history_resize(struct kbase_io_history *h, u16 new_size);
 
 #endif
 
-
-
+extern int meson_gpu_data_invalid_count;
+extern int meson_gpu_fault;

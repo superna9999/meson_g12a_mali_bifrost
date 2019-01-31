@@ -1270,11 +1270,13 @@ void kbase_jd_done_worker(struct work_struct *data)
 		return;
 	}
 
-	if (katom->event_code != BASE_JD_EVENT_DONE)
+	if (katom->event_code != BASE_JD_EVENT_DONE) {
+		meson_gpu_fault ++;
 		dev_err(kbdev->dev,
 			"t6xx: GPU fault 0x%02lx from job slot %d\n",
-					(unsigned long)katom->event_code,
-								katom->slot_nr);
+                            (unsigned long)katom->event_code,
+                            katom->slot_nr);
+	}
 
 	if (kbase_hw_has_issue(kbdev, BASE_HW_ISSUE_8316))
 		kbase_as_poking_timer_release_atom(kbdev, kctx, katom);

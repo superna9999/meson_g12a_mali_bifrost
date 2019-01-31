@@ -302,6 +302,7 @@ void kbase_job_done(struct kbase_device *kbdev, u32 done)
 						BASE_JD_EVENT_TERMINATED;
 					/* fall through */
 				default:
+					meson_gpu_data_invalid_count ++;
 					dev_warn(kbdev->dev, "error detected from slot %d, job status 0x%08x (%s)",
 							i, completion_code,
 							kbase_exception_name
