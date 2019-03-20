@@ -4214,8 +4214,7 @@ static const struct dev_pm_ops kbase_pm_ops = {
 #ifdef CONFIG_OF
 static const struct of_device_id kbase_dt_ids[] = {
 	{ .compatible = "arm,malit6xx" },
-	{ .compatible = "arm,mali-g31" },
-	{ .compatible = "arm,mali-g52" },
+	{ .compatible = "arm,mali-bifrost" },
 	{ .compatible = "arm,mali-midgard" },
 	{ /* sentinel */ }
 };
