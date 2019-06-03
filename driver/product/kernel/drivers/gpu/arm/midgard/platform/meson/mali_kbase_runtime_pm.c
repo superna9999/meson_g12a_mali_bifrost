@@ -63,7 +63,11 @@ static int pm_soft_reset(struct kbase_device *kbdev)
 {
 	struct reset_control *rstc;
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 1, 0)
+	rstc = of_reset_control_array_get(kbdev->dev->of_node, false, false, false);
+#else
 	rstc = of_reset_control_array_get(kbdev->dev->of_node, false, false);
+#endif
 	if (!IS_ERR(rstc)) {
 		reset_control_assert(rstc);
 		udelay(10);
