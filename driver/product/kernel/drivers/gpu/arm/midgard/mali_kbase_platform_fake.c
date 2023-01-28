@@ -1,11 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 /*
  *
- * (C) COPYRIGHT 2011-2014, 2016-2017 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2011-2014, 2016-2017, 2020-2022 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
  * Foundation, and any use by you of this program is subject to the terms
- * of such GNU licence.
+ * of such GNU license.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,8 +17,6 @@
  * along with this program; if not, you can access it online at
  * http://www.gnu.org/licenses/gpl-2.0.html.
  *
- * SPDX-License-Identifier: GPL-2.0
- *
  */
 
 #include <linux/errno.h>
@@ -26,7 +25,6 @@
 #include <linux/platform_device.h>
 #include <linux/string.h>
 
-
 /*
  * This file is included only for type definitions and functions belonging to
  * specific platform folders. Do not add dependencies with symbols that are
@@ -34,21 +32,21 @@
  */
 #include <mali_kbase_config.h>
 
+#ifndef CONFIG_OF
+
 #define PLATFORM_CONFIG_RESOURCE_COUNT 4
-#define PLATFORM_CONFIG_IRQ_RES_COUNT  3
 
 static struct platform_device *mali_device;
 
-#ifndef CONFIG_OF
 /**
- * @brief Convert data in struct kbase_io_resources struct to Linux-specific resources
+ * kbasep_config_parse_io_resources - Convert data in struct kbase_io_resources
+ * struct to Linux-specific resources
+ * @io_resources:      Input IO resource data
+ * @linux_resources:  Pointer to output array of Linux resource structures
  *
  * Function converts data in struct kbase_io_resources struct to an array of Linux resource structures. Note that function
  * assumes that size of linux_resource array is at least PLATFORM_CONFIG_RESOURCE_COUNT.
  * Resources are put in fixed order: I/O memory region, job IRQ, MMU IRQ, GPU IRQ.
- *
- * @param[in]  io_resource      Input IO resource data
- * @param[out] linux_resources  Pointer to output array of Linux resource structures
  */
 static void kbasep_config_parse_io_resources(const struct kbase_io_resources *io_resources, struct resource *const linux_resources)
 {
@@ -75,14 +73,11 @@ static void kbasep_config_parse_io_resources(const struct kbase_io_resources *io
 	linux_resources[3].end   = io_resources->gpu_irq_number;
 	linux_resources[3].flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL;
 }
-#endif /* CONFIG_OF */
 
 int kbase_platform_register(void)
 {
 	struct kbase_platform_config *config;
-#ifndef CONFIG_OF
 	struct resource resources[PLATFORM_CONFIG_RESOURCE_COUNT];
-#endif
 	int err;
 
 	config = kbase_get_platform_config(); /* declared in midgard/mali_kbase_config.h but defined in platform folder */
@@ -95,7 +90,6 @@ int kbase_platform_register(void)
 	if (mali_device == NULL)
 		return -ENOMEM;
 
-#ifndef CONFIG_OF
 	kbasep_config_parse_io_resources(config->io_resources, resources);
 	err = platform_device_add_resources(mali_device, resources, PLATFORM_CONFIG_RESOURCE_COUNT);
 	if (err) {
@@ -103,7 +97,6 @@ int kbase_platform_register(void)
 		mali_device = NULL;
 		return err;
 	}
-#endif /* CONFIG_OF */
 
 	err = platform_device_add(mali_device);
 	if (err) {
@@ -122,3 +115,5 @@ void kbase_platform_unregister(void)
 		platform_device_unregister(mali_device);
 }
 EXPORT_SYMBOL(kbase_platform_unregister);
+
+#endif /* CONFIG_OF */

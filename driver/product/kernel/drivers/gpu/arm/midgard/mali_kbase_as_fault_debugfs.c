@@ -1,11 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 /*
  *
- * (C) COPYRIGHT 2016-2018 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2016-2021 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
  * Foundation, and any use by you of this program is subject to the terms
- * of such GNU licence.
+ * of such GNU license.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,16 +17,15 @@
  * along with this program; if not, you can access it online at
  * http://www.gnu.org/licenses/gpl-2.0.html.
  *
- * SPDX-License-Identifier: GPL-2.0
- *
  */
 
 #include <linux/debugfs.h>
 
 #include <mali_kbase.h>
 #include <mali_kbase_as_fault_debugfs.h>
+#include <device/mali_kbase_device.h>
 
-#ifdef CONFIG_DEBUG_FS
+#if IS_ENABLED(CONFIG_DEBUG_FS)
 #ifdef CONFIG_MALI_DEBUG
 
 static int kbase_as_fault_read(struct seq_file *sfile, void *data)
@@ -36,7 +36,7 @@ static int kbase_as_fault_read(struct seq_file *sfile, void *data)
 	const struct list_head *kbdev_list;
 	struct kbase_device *kbdev = NULL;
 
-	kbdev_list = kbase_dev_list_get();
+	kbdev_list = kbase_device_get_list();
 
 	list_for_each(entry, kbdev_list) {
 		kbdev = list_entry(entry, struct kbase_device, entry);
@@ -53,7 +53,7 @@ static int kbase_as_fault_read(struct seq_file *sfile, void *data)
 
 	}
 
-	kbase_dev_list_put(kbdev_list);
+	kbase_device_put_list(kbdev_list);
 
 	return 0;
 }
@@ -64,6 +64,7 @@ static int kbase_as_fault_debugfs_open(struct inode *in, struct file *file)
 }
 
 static const struct file_operations as_fault_fops = {
+	.owner = THIS_MODULE,
 	.open = kbase_as_fault_debugfs_open,
 	.read = seq_read,
 	.llseek = seq_lseek,
@@ -78,7 +79,7 @@ static const struct file_operations as_fault_fops = {
  */
 void kbase_as_fault_debugfs_init(struct kbase_device *kbdev)
 {
-#ifdef CONFIG_DEBUG_FS
+#if IS_ENABLED(CONFIG_DEBUG_FS)
 #ifdef CONFIG_MALI_DEBUG
 	uint i;
 	char as_name[64];
@@ -92,20 +93,19 @@ void kbase_as_fault_debugfs_init(struct kbase_device *kbdev)
 	debugfs_directory = debugfs_create_dir("address_spaces",
 					       kbdev->mali_debugfs_directory);
 
-	if (debugfs_directory) {
+	if (IS_ERR_OR_NULL(debugfs_directory)) {
+		dev_warn(kbdev->dev,
+			 "unable to create address_spaces debugfs directory");
+	} else {
 		for (i = 0; i < kbdev->nr_hw_address_spaces; i++) {
 			snprintf(as_name, ARRAY_SIZE(as_name), "as%u", i);
-			debugfs_create_file(as_name, S_IRUGO,
+			debugfs_create_file(as_name, 0444,
 					    debugfs_directory,
 					    (void *)(uintptr_t)i,
 					    &as_fault_fops);
 		}
-	} else {
-		dev_warn(kbdev->dev,
-			 "unable to create address_spaces debugfs directory");
 	}
 
 #endif /* CONFIG_MALI_DEBUG */
 #endif /* CONFIG_DEBUG_FS */
-	return;
 }

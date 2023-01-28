@@ -1,16 +1,26 @@
-# copyright:
-# ----------------------------------------------------------------------------
-# This confidential and proprietary software may be used only as authorized
-# by a licensing agreement from ARM Limited.
-#      (C) COPYRIGHT 2017 ARM Limited, ALL RIGHTS RESERVED
-# The entire notice above must be reproduced on all authorized copies and
-# copies may only be made to the extent permitted by a licensing agreement
-# from ARM Limited.
-# ----------------------------------------------------------------------------
+# SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
+#
+# (C) COPYRIGHT 2017-2022 ARM Limited. All rights reserved.
+#
+# This program is free software and is provided to you under the terms of the
+# GNU General Public License version 2 as published by the Free Software
+# Foundation, and any use by you of this program is subject to the terms
+# of such GNU license.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, you can access it online at
+# http://www.gnu.org/licenses/gpl-2.0.html.
+#
+#
 
+menu "Kernel menu"
+
+source "kernel/drivers/base/arm/Mconfig"
 source "kernel/drivers/gpu/arm/midgard/Mconfig"
 
-config SMC_PROTECTED_MODE_SWITCHER
-    bool
-    default y if PLATFORM_JUNO && GPU_T62X && BUILD_KERNEL_MODULES
-    default n
+endmenu

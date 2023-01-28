@@ -1,11 +1,12 @@
+/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 /*
  *
- * (C) COPYRIGHT 2014-2015 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2014-2015, 2019-2021 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
  * Foundation, and any use by you of this program is subject to the terms
- * of such GNU licence.
+ * of such GNU license.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,10 +17,7 @@
  * along with this program; if not, you can access it online at
  * http://www.gnu.org/licenses/gpl-2.0.html.
  *
- * SPDX-License-Identifier: GPL-2.0
- *
  */
-
 
 /*
  * HW access backend common APIs
@@ -29,31 +27,17 @@
 #define _KBASE_HWACCESS_BACKEND_H_
 
 /**
- * kbase_backend_early_init - Perform any backend-specific initialization.
- * @kbdev:	Device pointer
+ * kbase_backend_devfreq_init - Perform backend devfreq related initialization.
+ * @kbdev:      Device pointer
  *
  * Return: 0 on success, or an error code on failure.
  */
-int kbase_backend_early_init(struct kbase_device *kbdev);
+int kbase_backend_devfreq_init(struct kbase_device *kbdev);
 
 /**
- * kbase_backend_late_init - Perform any backend-specific initialization.
- * @kbdev:	Device pointer
- *
- * Return: 0 on success, or an error code on failure.
- */
-int kbase_backend_late_init(struct kbase_device *kbdev);
-
-/**
- * kbase_backend_early_term - Perform any backend-specific termination.
+ * kbase_backend_devfreq_term - Perform backend-devfreq termination.
  * @kbdev:	Device pointer
  */
-void kbase_backend_early_term(struct kbase_device *kbdev);
-
-/**
- * kbase_backend_late_term - Perform any backend-specific termination.
- * @kbdev:	Device pointer
- */
-void kbase_backend_late_term(struct kbase_device *kbdev);
+void kbase_backend_devfreq_term(struct kbase_device *kbdev);
 
 #endif /* _KBASE_HWACCESS_BACKEND_H_ */

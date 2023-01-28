@@ -1,11 +1,12 @@
+/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 /*
  *
- * (C) COPYRIGHT 2010-2015, 2018 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2010-2015, 2018-2021 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
  * Foundation, and any use by you of this program is subject to the terms
- * of such GNU licence.
+ * of such GNU license.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,8 +16,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, you can access it online at
  * http://www.gnu.org/licenses/gpl-2.0.html.
- *
- * SPDX-License-Identifier: GPL-2.0
  *
  */
 
@@ -33,11 +32,8 @@
  * @kbdev: The kbase device structure for the device (must be a valid pointer)
  *
  * Must be called before calling any other policy function
- *
- * Return: 0 if the power policy framework was successfully
- *         initialized, -errno otherwise.
  */
-int kbase_pm_policy_init(struct kbase_device *kbdev);
+void kbase_pm_policy_init(struct kbase_device *kbdev);
 
 /**
  * kbase_pm_policy_term - Terminate power policy framework
@@ -93,12 +89,14 @@ static inline bool kbase_pm_cores_requested(struct kbase_device *kbdev,
 	 * available, and shaders are definitely not powered.
 	 */
 	if (kbdev->pm.backend.l2_state != KBASE_L2_PEND_ON &&
-			kbdev->pm.backend.l2_state != KBASE_L2_ON)
+			kbdev->pm.backend.l2_state != KBASE_L2_ON &&
+			kbdev->pm.backend.l2_state != KBASE_L2_ON_HWCNT_ENABLE)
 		return false;
 
 	if (shader_required &&
 			kbdev->pm.backend.shaders_state != KBASE_SHADERS_PEND_ON_CORESTACK_ON &&
-			kbdev->pm.backend.shaders_state != KBASE_SHADERS_ON_CORESTACK_ON)
+			kbdev->pm.backend.shaders_state != KBASE_SHADERS_ON_CORESTACK_ON &&
+			kbdev->pm.backend.shaders_state != KBASE_SHADERS_ON_CORESTACK_ON_RECHECK)
 		return false;
 
 	return true;

@@ -1,11 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 /*
  *
- * (C) COPYRIGHT 2015, 2017 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2015, 2017-2022 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
  * Foundation, and any use by you of this program is subject to the terms
- * of such GNU licence.
+ * of such GNU license.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,75 +17,131 @@
  * along with this program; if not, you can access it online at
  * http://www.gnu.org/licenses/gpl-2.0.html.
  *
- * SPDX-License-Identifier: GPL-2.0
- *
  */
 
 #include <mali_kbase.h>
 #include <mali_kbase_defs.h>
+#include <device/mali_kbase_device.h>
+
 #include <linux/pm_runtime.h>
 #include <linux/reset.h>
+#include <linux/clk.h>
+#include <linux/clk-provider.h>
+#include <linux/delay.h>
+#include <linux/regulator/consumer.h>
+
 #include "mali_kbase_config_platform.h"
-#include <backend/gpu/mali_kbase_device_internal.h>
-#include <asm/delay.h>
 
-static int first = 1;
 
-/* Manually Power On Cores and L2 Cache */
-static int gpu_power_on(struct kbase_device *kbdev, uint32_t  mask)
+static struct reset_control **resets;
+static int nr_resets;
+
+static int resets_init(struct kbase_device *kbdev)
 {
-	/* Clear all interrupts */
-	kbase_reg_write(kbdev, GPU_CONTROL_REG(GPU_IRQ_CLEAR), GPU_IRQ_REG_ALL);
+	struct device_node *np;
+	int i;
+	int err = 0;
 
-	/* Power On all Tiler Cores */
-	kbase_reg_write(kbdev, GPU_CONTROL_REG(TILER_PWRON_LO), 0xffffffff);
-	kbase_reg_write(kbdev, GPU_CONTROL_REG(TILER_PWRON_HI), 0xffffffff);
+	np = kbdev->dev->of_node;
 
-	/* Power On all L2 cache */
-	kbase_reg_write(kbdev, GPU_CONTROL_REG(L2_PWRON_LO), 0xffffffff);
-	kbase_reg_write(kbdev, GPU_CONTROL_REG(L2_PWRON_HI), 0xffffffff);
+	nr_resets = of_count_phandle_with_args(np, "resets", "#reset-cells");
+	if (nr_resets <= 0) {
+		dev_err(kbdev->dev, "Failed to get GPU resets from dtb\n");
+		return nr_resets;
+	}
 
-	/* Power On all Shader Cores */
-	kbase_reg_write(kbdev, GPU_CONTROL_REG(SHADER_PWRON_LO), 0x3);
-	kbase_reg_write(kbdev, GPU_CONTROL_REG(SHADER_PWRON_HI), 0x0);
+	resets = devm_kcalloc(kbdev->dev, nr_resets, sizeof(*resets),
+			GFP_KERNEL);
+	if (!resets)
+		return -ENOMEM;
 
-	/* Wait for Power On to complete */
+	for (i = 0; i < nr_resets; ++i) {
+		resets[i] = devm_reset_control_get_exclusive_by_index(
+				kbdev->dev, i);
+		if (IS_ERR(resets[i])) {
+			err = PTR_ERR(resets[i]);
+			nr_resets = i;
+			break;
+		}
+	}
+
+	return err;
+}
+
+static int pm_callback_soft_reset(struct kbase_device *kbdev)
+{
+	int ret, i;
+
+	if (!resets) {
+		ret = resets_init(kbdev);
+		if (ret)
+			return ret;
+	}
+
+	for (i = 0; i < nr_resets; ++i)
+		reset_control_assert(resets[i]);
+
 	udelay(10);
-	while (!kbase_reg_read(kbdev, GPU_CONTROL_REG(GPU_IRQ_RAWSTAT)))
-		udelay(10);
 
-	/* Clear all interrupts */
-	kbase_reg_write(kbdev, GPU_CONTROL_REG(GPU_IRQ_CLEAR), GPU_IRQ_REG_ALL);
+	for (i = 0; i < nr_resets; ++i)
+		reset_control_deassert(resets[i]);
 
+	udelay(10);
+
+	/* Override Power Management Settings, values from manufacturer's defaults */
+	kbase_reg_write(kbdev, GPU_CONTROL_REG(PWR_KEY), 0x2968A819);
+	kbase_reg_write(kbdev, GPU_CONTROL_REG(PWR_OVERRIDE1),
+			0xfff | (0x20 << 16));
+
+	/*
+	 * RESET_COMPLETED interrupt will be raised, so continue with
+	 * the normal soft reset procedure
+	 */
 	return 0;
 }
 
-static int pm_soft_reset(struct kbase_device *kbdev)
+static void enable_gpu_power_control(struct kbase_device *kbdev)
 {
-	struct reset_control *rstc;
+	unsigned int i;
 
-#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 1, 0)
-	rstc = of_reset_control_array_get(kbdev->dev->of_node, false, false, false);
-#else
-	rstc = of_reset_control_array_get(kbdev->dev->of_node, false, false);
+#if defined(CONFIG_REGULATOR)
+	for (i = 0; i < kbdev->nr_regulators; i++) {
+		if (WARN_ON(kbdev->regulators[i] == NULL))
+			;
+		else if (!regulator_is_enabled(kbdev->regulators[i]))
+			WARN_ON(regulator_enable(kbdev->regulators[i]));
+	}
 #endif
-	if (!IS_ERR(rstc)) {
-		reset_control_assert(rstc);
-		udelay(10);
-		reset_control_deassert(rstc);
-		udelay(10);
 
-		reset_control_put(rstc);
+	for (i = 0; i < kbdev->nr_clocks; i++) {
+		if (WARN_ON(kbdev->clocks[i] == NULL))
+			;
+		else if (!__clk_is_enabled(kbdev->clocks[i]))
+			WARN_ON(clk_prepare_enable(kbdev->clocks[i]));
+	}
+}
 
-		/* Override Power Management Settings */
-		kbase_reg_write(kbdev, GPU_CONTROL_REG(PWR_KEY),
-				0x2968A819);
-		kbase_reg_write(kbdev, GPU_CONTROL_REG(PWR_OVERRIDE1),
-				0xfff | (0x20 << 16));
-	} else
-		return PTR_ERR(rstc);
+static void disable_gpu_power_control(struct kbase_device *kbdev)
+{
+	unsigned int i;
 
-	return 0;
+	for (i = 0; i < kbdev->nr_clocks; i++) {
+		if (WARN_ON(kbdev->clocks[i] == NULL))
+			;
+		else if (__clk_is_enabled(kbdev->clocks[i])) {
+			clk_disable_unprepare(kbdev->clocks[i]);
+			WARN_ON(__clk_is_enabled(kbdev->clocks[i]));
+		}
+	}
+
+#if defined(CONFIG_REGULATOR)
+	for (i = 0; i < kbdev->nr_regulators; i++) {
+		if (WARN_ON(kbdev->regulators[i] == NULL))
+			;
+		else if (regulator_is_enabled(kbdev->regulators[i]))
+			WARN_ON(regulator_disable(kbdev->regulators[i]));
+	}
+#endif
 }
 
 static int pm_callback_power_on(struct kbase_device *kbdev)
@@ -92,17 +149,9 @@ static int pm_callback_power_on(struct kbase_device *kbdev)
 	int ret = 1; /* Assume GPU has been powered off */
 	int error;
 
-	dev_dbg(kbdev->dev, "pm_callback_power_on %p\n",
-			(void *)kbdev->dev->pm_domain);
+	dev_dbg(kbdev->dev, "%s %pK\n", __func__, (void *)kbdev->dev->pm_domain);
 
-	if (first) {
-		pm_soft_reset(kbdev);
-
-		gpu_power_on(kbdev, 7);
-
-		first = 0;
-	}
-
+#ifdef KBASE_PM_RUNTIME
 	error = pm_runtime_get_sync(kbdev->dev);
 	if (error == 1) {
 		/*
@@ -111,18 +160,25 @@ static int pm_callback_power_on(struct kbase_device *kbdev)
 		 */
 		ret = 0;
 	}
-
 	dev_dbg(kbdev->dev, "pm_runtime_get_sync returned %d\n", error);
+#else
+	enable_gpu_power_control(kbdev);
+#endif
 
 	return ret;
 }
 
 static void pm_callback_power_off(struct kbase_device *kbdev)
 {
-	dev_dbg(kbdev->dev, "pm_callback_power_off\n");
+	dev_dbg(kbdev->dev, "%s\n", __func__);
 
+#ifdef KBASE_PM_RUNTIME
 	pm_runtime_mark_last_busy(kbdev->dev);
 	pm_runtime_put_autosuspend(kbdev->dev);
+#else
+	/* Power down the GPU immediately as runtime PM is disabled */
+	disable_gpu_power_control(kbdev);
+#endif
 }
 
 #ifdef KBASE_PM_RUNTIME
@@ -130,7 +186,7 @@ static int kbase_device_runtime_init(struct kbase_device *kbdev)
 {
 	int ret = 0;
 
-	dev_dbg(kbdev->dev, "kbase_device_runtime_init\n");
+	dev_dbg(kbdev->dev, "%s\n", __func__);
 
 	pm_runtime_set_autosuspend_delay(kbdev->dev, AUTO_SUSPEND_DELAY);
 	pm_runtime_use_autosuspend(kbdev->dev);
@@ -140,7 +196,11 @@ static int kbase_device_runtime_init(struct kbase_device *kbdev)
 
 	if (!pm_runtime_enabled(kbdev->dev)) {
 		dev_warn(kbdev->dev, "pm_runtime not enabled");
-		ret = -ENOSYS;
+		ret = -EINVAL;
+	} else if (atomic_read(&kbdev->dev->power.usage_count)) {
+		dev_warn(kbdev->dev, "%s: Device runtime usage count unexpectedly non zero %d",
+			 __func__, atomic_read(&kbdev->dev->power.usage_count));
+		ret = -EINVAL;
 	}
 
 	return ret;
@@ -148,21 +208,29 @@ static int kbase_device_runtime_init(struct kbase_device *kbdev)
 
 static void kbase_device_runtime_disable(struct kbase_device *kbdev)
 {
-	dev_dbg(kbdev->dev, "kbase_device_runtime_disable\n");
+	dev_dbg(kbdev->dev, "%s\n", __func__);
+
+	if (atomic_read(&kbdev->dev->power.usage_count))
+		dev_warn(kbdev->dev, "%s: Device runtime usage count unexpectedly non zero %d",
+			 __func__, atomic_read(&kbdev->dev->power.usage_count));
+
 	pm_runtime_disable(kbdev->dev);
 }
-#endif
+#endif /* KBASE_PM_RUNTIME */
 
 static int pm_callback_runtime_on(struct kbase_device *kbdev)
 {
-	dev_dbg(kbdev->dev, "pm_callback_runtime_on\n");
+	dev_dbg(kbdev->dev, "%s\n", __func__);
 
+	enable_gpu_power_control(kbdev);
 	return 0;
 }
 
 static void pm_callback_runtime_off(struct kbase_device *kbdev)
 {
-	dev_dbg(kbdev->dev, "pm_callback_runtime_off\n");
+	dev_dbg(kbdev->dev, "%s\n", __func__);
+
+	disable_gpu_power_control(kbdev);
 }
 
 static void pm_callback_resume(struct kbase_device *kbdev)
@@ -182,7 +250,7 @@ struct kbase_pm_callback_conf pm_callbacks = {
 	.power_off_callback = pm_callback_power_off,
 	.power_suspend_callback = pm_callback_suspend,
 	.power_resume_callback = pm_callback_resume,
-	.soft_reset_callback = pm_soft_reset,
+	.soft_reset_callback = pm_callback_soft_reset,
 #ifdef KBASE_PM_RUNTIME
 	.power_runtime_init_callback = kbase_device_runtime_init,
 	.power_runtime_term_callback = kbase_device_runtime_disable,
@@ -195,5 +263,3 @@ struct kbase_pm_callback_conf pm_callbacks = {
 	.power_runtime_off_callback = NULL,
 #endif				/* KBASE_PM_RUNTIME */
 };
-
-
