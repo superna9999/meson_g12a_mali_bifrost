@@ -15,7 +15,10 @@ HowTo
 =====
 
 ```
-$ make KDIR=/path/to/amlogic/upstream/linux ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CONFIG_NAME=config.meson-g12a
+$ make KDIR=/path/to/linux/headers/or/sources CONFIG_NAME=config.meson-g12a
+
+for crosscompile:
+$ make KDIR=/path/to/linux/headers/or/sources ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CONFIG_NAME=config.meson-g12a
 ```
 
 Copy mali_kbase.ko to root filesystem and boot.

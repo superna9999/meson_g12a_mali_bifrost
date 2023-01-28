@@ -1,11 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 /*
  *
- * (C) COPYRIGHT 2017 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2017, 2020-2022 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
  * Foundation, and any use by you of this program is subject to the terms
- * of such GNU licence.
+ * of such GNU license.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,23 +17,21 @@
  * along with this program; if not, you can access it online at
  * http://www.gnu.org/licenses/gpl-2.0.html.
  *
- * SPDX-License-Identifier: GPL-2.0
- *
  */
 
 /* Kernel UTF test helpers */
 #include <kutf/kutf_helpers.h>
-
 #include <linux/err.h>
 #include <linux/jiffies.h>
 #include <linux/sched.h>
 #include <linux/preempt.h>
 #include <linux/wait.h>
 #include <linux/uaccess.h>
+#include <linux/export.h>
 
 static DEFINE_SPINLOCK(kutf_input_lock);
 
-static bool pending_input(struct kutf_context *context)
+bool kutf_helper_pending_input(struct kutf_context *context)
 {
 	bool input_pending;
 
@@ -44,6 +43,7 @@ static bool pending_input(struct kutf_context *context)
 
 	return input_pending;
 }
+EXPORT_SYMBOL(kutf_helper_pending_input);
 
 char *kutf_helper_input_dequeue(struct kutf_context *context, size_t *str_size)
 {
@@ -59,7 +59,7 @@ char *kutf_helper_input_dequeue(struct kutf_context *context, size_t *str_size)
 		spin_unlock(&kutf_input_lock);
 
 		err = wait_event_interruptible(context->userdata.input_waitq,
-				pending_input(context));
+				kutf_helper_pending_input(context));
 
 		if (err)
 			return ERR_PTR(-EINTR);
@@ -127,3 +127,15 @@ void kutf_helper_input_enqueue_end_of_data(struct kutf_context *context)
 {
 	kutf_helper_input_enqueue(context, NULL, 0);
 }
+
+void kutf_helper_ignore_dmesg(struct device *dev)
+{
+	dev_info(dev, "KUTF: Start ignoring dmesg warnings\n");
+}
+EXPORT_SYMBOL(kutf_helper_ignore_dmesg);
+
+void kutf_helper_stop_ignoring_dmesg(struct device *dev)
+{
+	dev_info(dev, "KUTF: Stop ignoring dmesg warnings\n");
+}
+EXPORT_SYMBOL(kutf_helper_stop_ignoring_dmesg);

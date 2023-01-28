@@ -1,11 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 /*
  *
- * (C) COPYRIGHT 2010-2018 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2010-2021 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
  * Foundation, and any use by you of this program is subject to the terms
- * of such GNU licence.
+ * of such GNU license.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,8 +16,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, you can access it online at
  * http://www.gnu.org/licenses/gpl-2.0.html.
- *
- * SPDX-License-Identifier: GPL-2.0
  *
  */
 
@@ -35,12 +34,13 @@ static inline void kbase_gpu_gwt_setup_page_permission(
 		int err = 0;
 
 		reg = rb_entry(rbnode, struct kbase_va_region, rblink);
-		if (reg->nr_pages && !(reg->flags & KBASE_REG_FREE) &&
+		if (reg->nr_pages && !kbase_is_region_invalid_or_free(reg) &&
 					(reg->flags & KBASE_REG_GPU_WR)) {
 			err = kbase_mmu_update_pages(kctx, reg->start_pfn,
 					kbase_get_gpu_phy_pages(reg),
 					reg->gpu_alloc->nents,
-					reg->flags & flag);
+					reg->flags & flag,
+					reg->gpu_alloc->group_id);
 			if (err)
 				dev_warn(kctx->kbdev->dev, "kbase_mmu_update_pages failure\n");
 		}
@@ -70,6 +70,7 @@ int kbase_gpu_gwt_start(struct kbase_context *kctx)
 	INIT_LIST_HEAD(&kctx->gwt_current_list);
 	INIT_LIST_HEAD(&kctx->gwt_snapshot_list);
 
+#if !MALI_USE_CSF
 	/* If GWT is enabled using new vector dumping format
 	 * from user space, back up status of the job serialization flag and
 	 * use full serialisation of jobs for dumping.
@@ -79,10 +80,11 @@ int kbase_gpu_gwt_start(struct kbase_context *kctx)
 	kctx->kbdev->serialize_jobs = KBASE_SERIALIZE_INTRA_SLOT |
 						KBASE_SERIALIZE_INTER_SLOT;
 
+#endif
 	/* Mark gwt enabled before making pages read only in case a
-	   write page fault is triggered while we're still in this loop.
-	   (kbase_gpu_vm_lock() doesn't prevent this!)
-	*/
+	 * write page fault is triggered while we're still in this loop.
+	 * (kbase_gpu_vm_lock() doesn't prevent this!)
+	 */
 	kctx->gwt_enabled = true;
 	kctx->gwt_was_enabled = true;
 
@@ -112,7 +114,9 @@ int kbase_gpu_gwt_stop(struct kbase_context *kctx)
 		kfree(pos);
 	}
 
+#if !MALI_USE_CSF
 	kctx->kbdev->serialize_jobs = kctx->kbdev->backup_serialize_jobs;
+#endif
 
 	kbase_gpu_gwt_setup_pages(kctx, ~0UL);
 

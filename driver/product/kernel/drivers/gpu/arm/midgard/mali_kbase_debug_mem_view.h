@@ -1,11 +1,12 @@
+/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 /*
  *
- * (C) COPYRIGHT 2013-2014 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2013-2015, 2019-2022 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
  * Foundation, and any use by you of this program is subject to the terms
- * of such GNU licence.
+ * of such GNU license.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,8 +17,6 @@
  * along with this program; if not, you can access it online at
  * http://www.gnu.org/licenses/gpl-2.0.html.
  *
- * SPDX-License-Identifier: GPL-2.0
- *
  */
 
 #ifndef _KBASE_DEBUG_MEM_VIEW_H
@@ -25,6 +24,16 @@
 
 #include <mali_kbase.h>
 
-void kbase_debug_mem_view_init(struct file *kctx_file);
+/**
+ * kbase_debug_mem_view_init - Initialize the mem_view debugfs file
+ * @kctx: Pointer to kernel base context
+ *
+ * This function creates a "mem_view" file which can be used to get a view of
+ * the context's memory as the GPU sees it (i.e. using the GPU's page tables).
+ *
+ * The file is cleaned up by a call to debugfs_remove_recursive() deleting the
+ * parent directory.
+ */
+void kbase_debug_mem_view_init(struct kbase_context *kctx);
 
 #endif

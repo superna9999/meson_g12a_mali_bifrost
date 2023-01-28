@@ -1,11 +1,12 @@
+/* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 /*
  *
- * (C) COPYRIGHT 2011-2018 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2011-2018, 2020-2021 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
  * Foundation, and any use by you of this program is subject to the terms
- * of such GNU licence.
+ * of such GNU license.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,8 +16,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, you can access it online at
  * http://www.gnu.org/licenses/gpl-2.0.html.
- *
- * SPDX-License-Identifier: GPL-2.0
  *
  */
 
@@ -30,9 +29,9 @@
 /**
  * kbase_pm_ca_init - Initialize core availability framework
  *
- * Must be called before calling any other core availability function
- *
  * @kbdev: The kbase device structure for the device (must be a valid pointer)
+ *
+ * Must be called before calling any other core availability function
  *
  * Return: 0 if the core availability framework was successfully initialized,
  *         -errno otherwise
@@ -75,23 +74,15 @@ void kbase_pm_ca_update_core_status(struct kbase_device *kbdev, u64 cores_ready,
 						u64 cores_transitioning);
 
 /**
- * kbase_pm_ca_instr_enable - Enable override for instrumentation
+ * kbase_pm_ca_get_instr_core_mask - Get the PM state sync-ed shaders core mask
  *
  * @kbdev: The kbase device structure for the device (must be a valid pointer)
  *
- * This overrides the output of the core availability policy, ensuring that all
- * cores are available
- */
-void kbase_pm_ca_instr_enable(struct kbase_device *kbdev);
-
-/**
- * kbase_pm_ca_instr_disable - Disable override for instrumentation
+ * Returns a mask of the PM state synchronised shader cores for arranging
+ * HW performance counter dumps
  *
- * @kbdev: The kbase device structure for the device (must be a valid pointer)
- *
- * This disables any previously enabled override, and resumes normal policy
- * functionality
+ * Return: The bit mask of PM state synchronised cores
  */
-void kbase_pm_ca_instr_disable(struct kbase_device *kbdev);
+u64 kbase_pm_ca_get_instr_core_mask(struct kbase_device *kbdev);
 
 #endif /* _KBASE_PM_CA_H_ */
